@@ -1,6 +1,7 @@
 module Main where
 
 import Control.Arrow
+import Control.Concurrent
 import Control.Exception
 import Control.Monad.Reader
 import Data.List
@@ -19,10 +20,16 @@ data Bot = Bot { socket :: Handle }
 type Net = ReaderT Bot IO
 
 main :: IO ()
-main = bracket connect disconnect loop
+main = do
+    spawnUi
+    bracket connect disconnect loop
   where
     disconnect = hClose . socket
     loop st    = runReaderT run st
+
+spawnUi = forkIO $ forever $ do
+    val <- getLine
+    write "" val
 
 connect :: IO Bot
 connect = notify $ do
@@ -42,7 +49,7 @@ run = do
     write "JOIN" chan
     asks socket >>= listen
 
-write ::String -> String -> Net ()
+write :: String -> String -> Net ()
 write s t = do
     h <- asks socket
     io $ hPrintf h "%s %s\r\n" s t
